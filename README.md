@@ -4,6 +4,64 @@
 
 Eber-Ride is a ride-hailing application (Node.js/Express backend, Angular frontend, MongoDB database) with Stripe payments, Twilio SMS, and email notifications.
 
+## Architecture Diagram
+
+```mermaid
+graph TB
+    subgraph Client["Client Layer"]
+        RiderApp["Rider App\n(Angular)"]
+        DriverApp["Driver App\n(Angular)"]
+        AdminPanel["Admin Dashboard\n(Angular)"]
+    end
+
+    subgraph Server["Backend Layer (Node.js / Express)"]
+        direction TB
+        Routes["REST API Routes\n/users /driver /createride\n/feedback /pricing /vehicle\n/ridehistory /credentials"]
+        AdminRoutes["Admin Routes\n/adminlogin /adminsignup\n/adminfetch /adminupdate\n/admindelete"]
+        AuthMW["Auth Middleware\n(JWT)"]
+        SocketIO["Socket.io\n(Real-time events)"]
+        CronJob["Cron Job\n(Scheduled tasks)"]
+        StripeCtrl["Stripe Controller\n+ Service + Routes"]
+    end
+
+    subgraph Data["Data Layer"]
+        MongoDB[("MongoDB")]
+        subgraph Collections["Collections"]
+            users["users"]
+            drivers["drivers"]
+            rides["rides"]
+            vehicles["vehicles"]
+            pricing["pricing"]
+            cities["cities"]
+            countries["countries"]
+            settings["settings"]
+            admin["admin"]
+        end
+    end
+
+    subgraph External["Third-Party Services"]
+        Stripe["Stripe API\n(Payments)"]
+        Twilio["Twilio API\n(SMS / OTP)"]
+        Nodemailer["Nodemailer\n(SMTP Email)"]
+    end
+
+    RiderApp <-->|"HTTP + WebSocket"| Routes
+    DriverApp <-->|"HTTP + WebSocket"| Routes
+    AdminPanel -->|"HTTP"| AdminRoutes
+    AdminRoutes --> AuthMW
+    Routes --> AuthMW
+    Routes <--> SocketIO
+    Routes --> CronJob
+    Routes --> StripeCtrl
+    StripeCtrl --> Stripe
+    Routes --> Twilio
+    Routes --> Nodemailer
+    AuthMW --> MongoDB
+    Routes --> MongoDB
+    AdminRoutes --> MongoDB
+    MongoDB --- Collections
+```
+
 ## DFD (Mermaid)
 
 ```mermaid
