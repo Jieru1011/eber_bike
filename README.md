@@ -65,6 +65,52 @@ flowchart TB
     MongoDB -.->|"Stores: Stripe keys,\nTwilio credentials,\nemail password"| API
 ```
 
+## Sequence Diagram: Ride Request Flow
+
+```mermaid
+sequenceDiagram
+    actor R as Rider
+    participant API as Express Server
+    participant DB as MongoDB
+    participant S as Socket.io
+    participant D as Driver
+    participant Stripe as Stripe
+    participant TW as Twilio
+    participant EM as Nodemailer
+
+    R->>API: POST /createride (pickup, drop, service type)
+    API->>DB: Save ride (status: PENDING)
+    DB-->>API: ride created
+    API->>DB: Query nearby drivers (city, available)
+    DB-->>API: driver list
+    API->>S: Emit ride request to nearest driver
+    S->>D: New ride notification
+    D->>API: Accept ride
+    API->>DB: Update ride (status: ACCEPTED, driverId)
+    API->>S: Emit ride accepted
+    S->>R: Driver assigned + driver info
+
+    D->>API: Status: ARRIVED
+    API->>S: Emit driver arrived
+    S->>R: Driver has arrived
+
+    D->>API: Status: STARTED
+    API->>DB: Update ride (status: STARTED)
+
+    D->>API: Status: COMPLETED
+    API->>DB: Update ride (status: COMPLETED, fare)
+    API->>Stripe: Create payment intent (customer_id, amount)
+    Stripe-->>API: Payment success
+    API->>TW: Send ride receipt SMS
+    TW-->>API: Delivered
+    API->>EM: Send receipt email
+    API->>S: Emit ride completed
+    S->>R: Trip summary + fare
+
+    R->>API: POST /feedback (rating, text)
+    API->>DB: Save feedback to ride
+```
+
 ## Data Inventory
 
 | Data Category | Storage | Sensitivity |
